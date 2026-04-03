@@ -1,4 +1,4 @@
-name: Build Armbian X96Q H313 (Bullseye Minimal)
+name: Build Armbian X96Q H313 (Klipper Ready)
 
 on:
   workflow_dispatch:
@@ -11,6 +11,10 @@ jobs:
     steps:
     - name: Checkout helper repo
       uses: actions/checkout@v4
+
+    # [BẢN VÁ 1]: Bật giả lập QEMU để sửa dứt điểm lỗi "arm64 not supported"
+    - name: Set up QEMU for Cross-Compilation
+      uses: docker/setup-qemu-action@v3
 
     - name: Install dependencies
       run: |
@@ -33,18 +37,26 @@ jobs:
         cp -r userpatches/* build/userpatches/ || true
         chmod +x build/userpatches/customize-image.sh || true
 
+    # [BẢN VÁ 2]: Tự động bơm thẳng Driver USB (CDC ACM) vào Kernel để chắc chắn 100% không bị xịt cổng của Klipper
+    - name: Inject Klipper USB Drivers
+      run: |
+        echo "CONFIG_USB_ACM=y" >> build/userpatches/linux-sunxi-current.config
+        echo "CONFIG_USB_SERIAL_CH341=y" >> build/userpatches/linux-sunxi-current.config
+        echo "CONFIG_USB_SERIAL_CP210X=y" >> build/userpatches/linux-sunxi-current.config
+
     - name: Show board files (debug)
       run: ls -R build/config || true
 
-    - name: Start Armbian build (minimal, Bullseye, non-interactive)
+    # [BẢN VÁ 3]: Đổi sang Bookworm và tắt chế độ Minimal để có đủ thư viện cài Klipper
+    - name: Start Armbian build (Server, Bookworm, non-interactive)
       working-directory: build
       run: |
         export DEBIAN_FRONTEND=noninteractive
-        ./compile.sh BOARD=x96q-h313 BRANCH=current RELEASE=bullseye \
-        BUILD_DESKTOP=no BUILD_MINIMAL=yes KERNEL_ONLY=no KERNEL_CONFIGURE=no
+        ./compile.sh BOARD=x96q-h313 BRANCH=current RELEASE=bookworm \
+        BUILD_DESKTOP=no BUILD_MINIMAL=no KERNEL_ONLY=no KERNEL_CONFIGURE=no
 
     - name: Upload images artifact
       uses: actions/upload-artifact@v4
       with:
-        name: armbian-images
-        path: build/output/images
+        name: Armbian-X96Q-Klipper
+        path: build/output/images/*.img*
