@@ -12,16 +12,13 @@ jobs:
     - name: Checkout helper repo
       uses: actions/checkout@v4
 
-    # [BẢN VÁ 1]: Bật giả lập QEMU để hệ thống Intel đóng gói được ROM ARM64
     - name: Set up QEMU for Cross-Compilation
       uses: docker/setup-qemu-action@v3
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git wget curl build-essential ccache bc bison flex \
-          python3 python3-pip python-is-python3 libncurses5-dev libssl-dev device-tree-compiler \
-          libtool unzip
+        sudo apt-get install -y git wget curl build-essential ccache bc bison flex python3 python3-pip python-is-python3 libncurses5-dev libssl-dev device-tree-compiler libtool unzip
 
     - name: Clone official Armbian build
       run: |
@@ -37,7 +34,6 @@ jobs:
         cp -r userpatches/* build/userpatches/ || true
         chmod +x build/userpatches/customize-image.sh || true
 
-    # [BẢN VÁ 2]: Tự động bơm thẳng Driver USB vào Kernel để nhận cổng Pico/MCU
     - name: Inject Klipper USB Drivers
       run: |
         echo "CONFIG_USB_ACM=y" >> build/userpatches/linux-sunxi-current.config
@@ -47,5 +43,14 @@ jobs:
     - name: Show board files (debug)
       run: ls -R build/config || true
 
-    # [BẢN VÁ 3]: Dùng bản Bookworm Server, xóa tham số KERNEL_ONLY lỗi thời và dùng cấu trúc lệnh mới
-    -
+    - name: Start Armbian build (Server, Bookworm, non-interactive)
+      working-directory: build
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        ./compile.sh build BOARD=x96q-h313 BRANCH=current RELEASE=bookworm BUILD_DESKTOP=no BUILD_MINIMAL=no KERNEL_CONFIGURE=no
+
+    - name: Upload images artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Armbian-X96Q-Klipper
+        path: "build/output/images/"
