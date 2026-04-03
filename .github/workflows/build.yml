@@ -26,12 +26,9 @@ jobs:
 
     - name: Copy helper files into build tree
       run: |
-        mkdir -p build/config/boards
-        mkdir -p build/patches/dts
-        mkdir -p build/userpatches
-        cp -r config/boards/* build/config/boards/ || true
-        cp -r patch/kernel/sunxi-current/* build/patches/dts/ || true
-        cp -r userpatches/* build/userpatches/ || true
+        cp -r config build/ || true
+        cp -r patch build/ || true
+        cp -r userpatches build/ || true
         chmod +x build/userpatches/customize-image.sh || true
 
     - name: Inject Klipper USB Drivers
@@ -40,10 +37,12 @@ jobs:
         echo "CONFIG_USB_SERIAL_CH341=y" >> build/userpatches/linux-sunxi-current.config
         echo "CONFIG_USB_SERIAL_CP210X=y" >> build/userpatches/linux-sunxi-current.config
 
-    - name: Show board files (debug)
-      run: ls -R build/config || true
+    # [BẢN VÁ 5]: Cứu hộ U-Boot! Đánh tráo bootloader X96Q sang Orange Pi Zero 2 (Cùng chip H313/H616)
+    - name: Fix Missing U-Boot Defconfig
+      run: |
+        sed -i 's/x96q-h313_defconfig/orangepi_zero2_defconfig/g' build/config/boards/x96q-h313.conf
 
-    - name: Start Armbian build (Server, Bookworm, non-interactive)
+    - name: Start Armbian build (Server, Bookworm)
       working-directory: build
       run: |
         export DEBIAN_FRONTEND=noninteractive
